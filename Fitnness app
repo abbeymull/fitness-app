@@ -1,0 +1,1568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>FitTrack</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { margin: 0; font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    #root { width: 100%; height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  
+  <script type="text/babel">
+/**
+ * Complete Fitness Tracking App
+ * Features: Coach/Client roles, Meal plans, Weekly workouts, Nutrition tracking, Check-ins
+ */
+
+import React, { useState, useEffect } from 'react';
+import { Home, Dumbbell, UtensilsCrossed, ClipboardCheck, LogOut, X, Upload, Plus, Trash2, Circle, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
+
+const FitnessApp = () => {
+  // Profile state
+  const [profile, setProfile] = useState(null);
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [role, setRole] = useState('client');
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState('home');
+
+  // Main goal
+  const [mainGoal, setMainGoal] = useState('');
+  const [isEditingGoal, setIsEditingGoal] = useState(false);
+  const [tempGoal, setTempGoal] = useState('');
+
+  // Vision board
+  const [visionPhotos, setVisionPhotos] = useState([]);
+
+  // Weekly workouts (assigned by coach)
+  const [weeklyWorkouts, setWeeklyWorkouts] = useState([]);
+  
+  // Extra workouts (added by client)
+  const [extraWorkouts, setExtraWorkouts] = useState([]);
+  const [showWorkoutForm, setShowWorkoutForm] = useState(false);
+  const [newWorkoutName, setNewWorkoutName] = useState('');
+
+  // Meal plan (assigned by coach)
+  const [mealPlan, setMealPlan] = useState({
+    breakfast: [],
+    lunch: [],
+    dinner: [],
+    snacks: []
+  });
+
+  // Selected meals for today
+  const [selectedMeals, setSelectedMeals] = useState({
+    breakfast: null,
+    lunch: null,
+    dinner: null,
+    snacks: null
+  });
+
+  // Extra meals (added by client)
+  const [extraMeals, setExtraMeals] = useState([]);
+  
+  // Food Search
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedFood, setSelectedFood] = useState(null);
+  const [servingSize, setServingSize] = useState(1);
+  const [showFoodSearch, setShowFoodSearch] = useState(false);
+
+  // My Foods (saved foods)
+  const [myFoods, setMyFoods] = useState([]);
+
+  // Check-ins
+  const [checkIns, setCheckIns] = useState([]);
+  const [showCheckInForm, setShowCheckInForm] = useState(false);
+
+  // Goals
+  const [dailyCalorieGoal, setDailyCalorieGoal] = useState(2000);
+  const [proteinGoal, setProteinGoal] = useState(150);
+  const [carbsGoal, setCarbsGoal] = useState(200);
+  const [fatsGoal, setFatsGoal] = useState(60);
+
+  // Coach features - Meal Plan Manager
+  const [showMealPlanManager, setShowMealPlanManager] = useState(false);
+  const [newMealCategory, setNewMealCategory] = useState('breakfast');
+  const [newMealName, setNewMealName] = useState('');
+  const [newMealCalories, setNewMealCalories] = useState('');
+  const [newMealProtein, setNewMealProtein] = useState('');
+  const [newMealCarbs, setNewMealCarbs] = useState('');
+  const [newMealFats, setNewMealFats] = useState('');
+
+  // Coach features - Workout Manager
+  const [showWorkoutManager, setShowWorkoutManager] = useState(false);
+  const [newWorkoutNameCoach, setNewWorkoutNameCoach] = useState('');
+  const [newWorkoutExercises, setNewWorkoutExercises] = useState([]);
+  const [newExerciseName, setNewExerciseName] = useState('');
+  const [newExerciseCategory, setNewExerciseCategory] = useState('Strength');
+  const [newExerciseSets, setNewExerciseSets] = useState('');
+  const [newExerciseReps, setNewExerciseReps] = useState('');
+  const [newExerciseWeight, setNewExerciseWeight] = useState('');
+
+  // Exercise database
+  const exerciseDatabase = [
+    'Bench Press', 'Squats', 'Deadlifts', 'Overhead Press', 'Barbell Rows',
+    'Pull-ups', 'Dips', 'Lunges', 'Leg Press', 'Leg Curls',
+    'Bicep Curls', 'Tricep Extensions', 'Lateral Raises', 'Face Pulls',
+    'Running', 'Cycling', 'Swimming', 'Rowing', 'Jump Rope',
+    'Yoga', 'Stretching', 'Pilates', 'Basketball', 'Soccer', 'Tennis'
+  ];
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const profileData = await window.storage.get('profile');
+      if (profileData) {
+        const parsed = JSON.parse(profileData.value);
+        setProfile(parsed);
+        setRole(parsed.role || 'client');
+      }
+
+      const goalData = await window.storage.get('mainGoal');
+      if (goalData) setMainGoal(goalData.value);
+
+      const photosData = await window.storage.get('visionPhotos');
+      if (photosData) setVisionPhotos(JSON.parse(photosData.value));
+
+      const workoutsData = await window.storage.get('weeklyWorkouts');
+      if (workoutsData) setWeeklyWorkouts(JSON.parse(workoutsData.value));
+
+      const extraWorkoutsData = await window.storage.get('extraWorkouts');
+      if (extraWorkoutsData) setExtraWorkouts(JSON.parse(extraWorkoutsData.value));
+
+      const mealPlanData = await window.storage.get('mealPlan');
+      if (mealPlanData) setMealPlan(JSON.parse(mealPlanData.value));
+
+      const selectedMealsData = await window.storage.get('selectedMeals');
+      if (selectedMealsData) setSelectedMeals(JSON.parse(selectedMealsData.value));
+
+      const extraMealsData = await window.storage.get('extraMeals');
+      if (extraMealsData) setExtraMeals(JSON.parse(extraMealsData.value));
+
+      const myFoodsData = await window.storage.get('myFoods');
+      if (myFoodsData) setMyFoods(JSON.parse(myFoodsData.value));
+
+      const checkInsData = await window.storage.get('checkIns');
+      if (checkInsData) setCheckIns(JSON.parse(checkInsData.value));
+
+      const goalsData = await window.storage.get('goals');
+      if (goalsData) {
+        const goals = JSON.parse(goalsData.value);
+        setDailyCalorieGoal(goals.calories || 2000);
+        setProteinGoal(goals.protein || 150);
+        setCarbsGoal(goals.carbs || 200);
+        setFatsGoal(goals.fats || 60);
+      }
+    } catch (error) {
+      console.log('No stored data found, starting fresh');
+    }
+  };
+
+  const saveData = (key, value) => {
+    window.storage.set(key, typeof value === 'string' ? value : JSON.stringify(value));
+  };
+
+  const createProfile = () => {
+    if (!email || !name) return;
+    
+    const newProfile = { email, name, role, createdAt: new Date().toISOString() };
+    setProfile(newProfile);
+    saveData('profile', JSON.stringify(newProfile));
+
+    // Set demo data for new users
+    if (weeklyWorkouts.length === 0) {
+      const demoWorkouts = [
+        {
+          id: 'w1',
+          name: 'Upper Body Strength',
+          completed: false,
+          exercises: [
+            { name: 'Bench Press', category: 'Strength', sets: 3, reps: 10, weight: 60 },
+            { name: 'Barbell Rows', category: 'Strength', sets: 3, reps: 12, weight: 50 },
+            { name: 'Overhead Press', category: 'Strength', sets: 3, reps: 10, weight: 30 }
+          ]
+        },
+        {
+          id: 'w2',
+          name: 'Lower Body Power',
+          completed: false,
+          exercises: [
+            { name: 'Squats', category: 'Strength', sets: 4, reps: 8, weight: 80 },
+            { name: 'Deadlifts', category: 'Strength', sets: 4, reps: 10, weight: 70 },
+            { name: 'Lunges', category: 'Strength', sets: 3, reps: 12, weight: 20 }
+          ]
+        },
+        {
+          id: 'w3',
+          name: 'Cardio Session',
+          completed: false,
+          exercises: [
+            { name: 'Running', category: 'Cardio', sets: 1, reps: 30, weight: 0 }
+          ]
+        }
+      ];
+
+      const demoMealPlan = {
+        breakfast: [
+          { id: 'b1', name: 'Oats + Banana + Protein', calories: 450, protein: 30, carbs: 50, fats: 10 },
+          { id: 'b2', name: 'Eggs (3) + Toast (2) + Avocado', calories: 400, protein: 25, carbs: 35, fats: 15 },
+          { id: 'b3', name: 'Greek Yogurt + Berries + Granola', calories: 350, protein: 20, carbs: 45, fats: 8 },
+          { id: 'b4', name: 'Protein Pancakes + Maple Syrup', calories: 380, protein: 28, carbs: 48, fats: 9 },
+          { id: 'b5', name: 'Smoothie Bowl + Nuts + Seeds', calories: 420, protein: 22, carbs: 52, fats: 14 },
+          { id: 'b6', name: 'Breakfast Burrito + Salsa', calories: 460, protein: 32, carbs: 45, fats: 16 }
+        ],
+        lunch: [
+          { id: 'l1', name: 'Chicken 200g + Rice 150g + Veggies', calories: 550, protein: 45, carbs: 60, fats: 8 },
+          { id: 'l2', name: 'Salmon 150g + Sweet Potato + Salad', calories: 480, protein: 35, carbs: 45, fats: 15 },
+          { id: 'l3', name: 'Turkey Wrap + Hummus + Veggies', calories: 420, protein: 30, carbs: 50, fats: 12 },
+          { id: 'l4', name: 'Beef Stir Fry + Noodles', calories: 580, protein: 42, carbs: 58, fats: 18 },
+          { id: 'l5', name: 'Tuna Salad + Whole Grain Bread', calories: 450, protein: 38, carbs: 42, fats: 14 },
+          { id: 'l6', name: 'Chicken Caesar Salad + Croutons', calories: 490, protein: 40, carbs: 35, fats: 20 }
+        ],
+        dinner: [
+          { id: 'd1', name: 'Steak 200g + Potatoes + Greens', calories: 600, protein: 50, carbs: 40, fats: 20 },
+          { id: 'd2', name: 'Fish 180g + Quinoa + Roasted Veg', calories: 520, protein: 40, carbs: 50, fats: 14 },
+          { id: 'd3', name: 'Chicken Stir Fry + Brown Rice', calories: 580, protein: 45, carbs: 55, fats: 18 },
+          { id: 'd4', name: 'Lamb Chops + Couscous + Salad', calories: 620, protein: 48, carbs: 45, fats: 24 },
+          { id: 'd5', name: 'Prawn Pasta + Tomato Sauce', calories: 560, protein: 38, carbs: 62, fats: 16 },
+          { id: 'd6', name: 'BBQ Chicken + Corn + Coleslaw', calories: 540, protein: 46, carbs: 48, fats: 15 }
+        ],
+        snacks: [
+          { id: 's1', name: 'Protein Shake + Banana', calories: 250, protein: 25, carbs: 30, fats: 3 },
+          { id: 's2', name: 'Apple + Almonds (30g)', calories: 220, protein: 6, carbs: 25, fats: 14 },
+          { id: 's3', name: 'Rice Cakes + Peanut Butter', calories: 200, protein: 8, carbs: 22, fats: 10 },
+          { id: 's4', name: 'Protein Bar + Orange', calories: 280, protein: 20, carbs: 32, fats: 8 },
+          { id: 's5', name: 'Carrots + Hummus', calories: 180, protein: 6, carbs: 20, fats: 9 },
+          { id: 's6', name: 'Trail Mix (50g)', calories: 240, protein: 8, carbs: 24, fats: 16 }
+        ]
+      };
+
+      setWeeklyWorkouts(demoWorkouts);
+      setMealPlan(demoMealPlan);
+      saveData('weeklyWorkouts', demoWorkouts);
+      saveData('mealPlan', demoMealPlan);
+    }
+  };
+
+  const logout = () => {
+    setProfile(null);
+    setEmail('');
+    setName('');
+    setRole('client');
+    window.storage.delete('profile');
+  };
+
+  // Goal functions
+  const startEditingGoal = () => {
+    setTempGoal(mainGoal);
+    setIsEditingGoal(true);
+  };
+
+  const saveGoal = () => {
+    setMainGoal(tempGoal);
+    saveData('mainGoal', tempGoal);
+    setIsEditingGoal(false);
+  };
+
+  const cancelEditingGoal = () => {
+    setIsEditingGoal(false);
+    setTempGoal('');
+  };
+
+  // Vision board functions
+  const addVisionPhoto = (e) => {
+    const file = e.target.files[0];
+    if (file && visionPhotos.length < 6) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const newPhotos = [...visionPhotos, { id: Date.now(), url: event.target.result, caption: '' }];
+        setVisionPhotos(newPhotos);
+        saveData('visionPhotos', newPhotos);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeVisionPhoto = (id) => {
+    const newPhotos = visionPhotos.filter(p => p.id !== id);
+    setVisionPhotos(newPhotos);
+    saveData('visionPhotos', newPhotos);
+  };
+
+  // Workout functions
+  const toggleWorkout = (id, isExtra = false) => {
+    if (isExtra) {
+      const updated = extraWorkouts.map(w => 
+        w.id === id ? { ...w, completed: !w.completed } : w
+      );
+      setExtraWorkouts(updated);
+      saveData('extraWorkouts', updated);
+    } else {
+      const updated = weeklyWorkouts.map(w => 
+        w.id === id ? { ...w, completed: !w.completed } : w
+      );
+      setWeeklyWorkouts(updated);
+      saveData('weeklyWorkouts', updated);
+    }
+  };
+
+  const addExtraWorkout = () => {
+    if (!newWorkoutName.trim()) return;
+    
+    const workout = {
+      id: Date.now().toString(),
+      name: newWorkoutName,
+      completed: false,
+      exercises: []
+    };
+    
+    const updated = [...extraWorkouts, workout];
+    setExtraWorkouts(updated);
+    saveData('extraWorkouts', updated);
+    setNewWorkoutName('');
+    setShowWorkoutForm(false);
+  };
+
+  const removeExtraWorkout = (id) => {
+    const updated = extraWorkouts.filter(w => w.id !== id);
+    setExtraWorkouts(updated);
+    saveData('extraWorkouts', updated);
+  };
+
+  // Coach - Meal Plan Manager
+  const addMealOption = () => {
+    if (!newMealName || !newMealCalories || !newMealProtein || !newMealCarbs || !newMealFats) return;
+
+    const newMeal = {
+      id: `${newMealCategory[0]}${Date.now()}`,
+      name: newMealName,
+      calories: parseInt(newMealCalories),
+      protein: parseInt(newMealProtein),
+      carbs: parseInt(newMealCarbs),
+      fats: parseInt(newMealFats)
+    };
+
+    const updatedPlan = {
+      ...mealPlan,
+      [newMealCategory]: [...mealPlan[newMealCategory], newMeal]
+    };
+
+    setMealPlan(updatedPlan);
+    saveData('mealPlan', updatedPlan);
+
+    // Reset form
+    setNewMealName('');
+    setNewMealCalories('');
+    setNewMealProtein('');
+    setNewMealCarbs('');
+    setNewMealFats('');
+  };
+
+  const removeMealOption = (category, mealId) => {
+    const updatedPlan = {
+      ...mealPlan,
+      [category]: mealPlan[category].filter(m => m.id !== mealId)
+    };
+    setMealPlan(updatedPlan);
+    saveData('mealPlan', updatedPlan);
+  };
+
+  // Coach - Workout Manager
+  const addExerciseToNewWorkout = () => {
+    if (!newExerciseName || !newExerciseSets || !newExerciseReps) return;
+
+    const exercise = {
+      name: newExerciseName,
+      category: newExerciseCategory,
+      sets: parseInt(newExerciseSets),
+      reps: parseInt(newExerciseReps),
+      weight: parseInt(newExerciseWeight) || 0
+    };
+
+    setNewWorkoutExercises([...newWorkoutExercises, exercise]);
+    
+    // Reset exercise form
+    setNewExerciseName('');
+    setNewExerciseSets('');
+    setNewExerciseReps('');
+    setNewExerciseWeight('');
+  };
+
+  const removeExerciseFromNewWorkout = (index) => {
+    setNewWorkoutExercises(newWorkoutExercises.filter((_, i) => i !== index));
+  };
+
+  const addNewWorkout = () => {
+    if (!newWorkoutNameCoach.trim() || newWorkoutExercises.length === 0) return;
+
+    const workout = {
+      id: `w${Date.now()}`,
+      name: newWorkoutNameCoach,
+      completed: false,
+      exercises: newWorkoutExercises
+    };
+
+    const updated = [...weeklyWorkouts, workout];
+    setWeeklyWorkouts(updated);
+    saveData('weeklyWorkouts', updated);
+
+    // Reset form
+    setNewWorkoutNameCoach('');
+    setNewWorkoutExercises([]);
+    setShowWorkoutManager(false);
+  };
+
+  const removeWorkout = (workoutId) => {
+    const updated = weeklyWorkouts.filter(w => w.id !== workoutId);
+    setWeeklyWorkouts(updated);
+    saveData('weeklyWorkouts', updated);
+  };
+
+  // Meal selection
+  const selectMeal = (type, mealId) => {
+    const updated = { ...selectedMeals, [type]: mealId };
+    setSelectedMeals(updated);
+    saveData('selectedMeals', updated);
+  };
+
+  const getMealSelection = (type) => {
+    return selectedMeals[type];
+  };
+
+  // Nutrition calculations
+  const getTodaysMeals = () => {
+    const selected = Object.values(selectedMeals).filter(Boolean);
+    const breakfastCount = mealPlan.breakfast ? mealPlan.breakfast.length : 0;
+    const lunchCount = mealPlan.lunch ? mealPlan.lunch.length : 0;
+    const dinnerCount = mealPlan.dinner ? mealPlan.dinner.length : 0;
+    const snacksCount = mealPlan.snacks ? mealPlan.snacks.length : 0;
+    const totalMealSlots = breakfastCount + lunchCount + dinnerCount + snacksCount;
+    return totalMealSlots > 0 ? Math.round((selected.length / 4) * 100) : 0;
+  };
+
+  const getTotalNutrition = () => {
+    let totalCals = 0, totalProtein = 0, totalCarbs = 0, totalFats = 0;
+
+    // From selected meal plan items
+    Object.entries(selectedMeals).forEach(([type, mealId]) => {
+      if (mealId) {
+        const meal = mealPlan[type] && mealPlan[type].find(m => m.id === mealId);
+        if (meal) {
+          totalCals += meal.calories;
+          totalProtein += meal.protein;
+          totalCarbs += meal.carbs;
+          totalFats += meal.fats;
+        }
+      }
+    });
+
+    // From extra meals
+    extraMeals.forEach(meal => {
+      totalCals += meal.calories;
+      totalProtein += meal.protein;
+      totalCarbs += meal.carbs;
+      totalFats += meal.fats;
+    });
+
+    return { calories: totalCals, protein: totalProtein, carbs: totalCarbs, fats: totalFats };
+  };
+
+  // Add extra meal
+  const addExtraMeal = () => {
+    if (!selectedFood) return;
+
+    const meal = {
+      id: Date.now().toString(),
+      name: selectedFood.name,
+      calories: Math.round(selectedFood.calories * servingSize),
+      protein: Math.round(selectedFood.protein * servingSize),
+      carbs: Math.round(selectedFood.carbs * servingSize),
+      fats: Math.round(selectedFood.fats * servingSize),
+      servings: servingSize
+    };
+
+    const updated = [...extraMeals, meal];
+    setExtraMeals(updated);
+    saveData('extraMeals', updated);
+
+    setSelectedFood(null);
+    setServingSize(1);
+    setShowFoodSearch(false);
+  };
+
+  const removeExtraMeal = (id) => {
+    const updated = extraMeals.filter(m => m.id !== id);
+    setExtraMeals(updated);
+    saveData('extraMeals', updated);
+  };
+
+  // Food search (USDA API)
+  const searchFood = async () => {
+    if (!searchQuery.trim()) return;
+    
+    setIsSearching(true);
+    try {
+      const response = await fetch(
+        `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=DEMO_KEY&query=${encodeURIComponent(searchQuery)}&pageSize=10`
+      );
+      const data = await response.json();
+      
+      const foods = data.foods && data.foods.map(food => ({
+        name: food.description,
+        calories: food.foodNutrients && food.foodNutrients.find(n => n.nutrientName === 'Energy') ? food.foodNutrients.find(n => n.nutrientName === 'Energy').value : 0,
+        protein: food.foodNutrients && food.foodNutrients.find(n => n.nutrientName === 'Protein') ? food.foodNutrients.find(n => n.nutrientName === 'Protein').value : 0,
+        carbs: food.foodNutrients && food.foodNutrients.find(n => n.nutrientName === 'Carbohydrate, by difference') ? food.foodNutrients.find(n => n.nutrientName === 'Carbohydrate, by difference').value : 0,
+        fats: food.foodNutrients && food.foodNutrients.find(n => n.nutrientName === 'Total lipid (fat)') ? food.foodNutrients.find(n => n.nutrientName === 'Total lipid (fat)').value : 0,
+      })) || [];
+      
+      setSearchResults(foods);
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchResults([]);
+    }
+    setIsSearching(false);
+  };
+
+  // Check-in functions
+  const addCheckIn = (checkInData) => {
+    const checkIn = {
+      id: Date.now().toString(),
+      date: new Date().toISOString().split('T')[0],
+      ...checkInData
+    };
+    const updated = [checkIn, ...checkIns];
+    setCheckIns(updated);
+    saveData('checkIns', updated);
+    setShowCheckInForm(false);
+  };
+
+  const getCurrentWeekCheckIns = () => {
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    return checkIns.filter(c => new Date(c.date) >= weekAgo);
+  };
+
+  // Calculate stats
+  const completedWorkouts = weeklyWorkouts.filter(w => w.completed).length;
+  const totalWorkouts = weeklyWorkouts.length;
+  const workoutProgress = totalWorkouts > 0 ? Math.round((completedWorkouts / totalWorkouts) * 100) : 0;
+  const mealProgress = getTodaysMeals();
+  const nutrition = getTotalNutrition();
+
+  // Login screen
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center p-4" style={{ 
+        fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"
+      }}>
+        <div className="bg-white rounded-2xl border border-gray-300 p-8 w-full max-w-md">
+          <h1 className="text-sm font-bold mb-6 text-black">FitTrack</h1>
+          <div className="space-y-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-3 py-1.5 bg-white border-2 border-gray-400 rounded-xl text-black placeholder-gray-400 focus:border-black focus:ring-2 focus:ring-black outline-none transition-all"
+                placeholder="your@email.com"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-3 py-1.5 bg-white border-2 border-gray-400 rounded-xl text-black placeholder-gray-400 focus:border-black focus:ring-2 focus:ring-black outline-none transition-all"
+                placeholder="Your name"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">I am a...</label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="w-full px-3 py-1.5 bg-white border-2 border-gray-400 rounded-xl text-black focus:border-black focus:ring-2 focus:ring-black outline-none transition-all"
+              >
+                <option value="client">Client (tracking my fitness)</option>
+                <option value="coach">Coach (managing clients)</option>
+              </select>
+            </div>
+            <button
+              onClick={createProfile}
+              className="w-full bg-black text-white py-2 rounded-xl font-medium hover:bg-gray-800 transition-all"
+            >
+              Get Started
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Main app
+  return (
+    <div className="min-h-screen bg-white" style={{ 
+      fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"
+    }}>
+      <div className="max-w-5xl mx-auto p-3 pb-20">
+        {/* Header */}
+        <div className="mb-2 flex justify-between items-center">
+          <div>
+            <h1 className="text-sm font-bold text-black">FitTrack</h1>
+            <p className="text-sm text-gray-500">
+              Welcome back, {profile.name}
+              {role === 'coach' && <span className="text-xs bg-black text-white px-2 py-0.5 rounded-full ml-2">Coach</span>}
+            </p>
+          </div>
+          <button
+            onClick={logout}
+            className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 border border-gray-300 rounded-xl text-sm text-gray-700 hover:bg-gray-200 transition-colors"
+          >
+            <LogOut size={16} />
+            Logout
+          </button>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="mb-2 flex gap-1 bg-gray-100 p-1 rounded-2xl">
+          {[
+            { id: 'home', label: 'HOME', icon: Home },
+            { id: 'fitness', label: 'FITNESS', icon: Dumbbell },
+            { id: 'nutrition', label: 'NUTRITION', icon: UtensilsCrossed },
+            { id: 'checkin', label: 'CHECK-IN', icon: ClipboardCheck }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-xl font-medium text-sm transition-all ${
+                activeTab === tab.id
+                  ? 'bg-black text-white'
+                  : 'text-gray-600 hover:text-black'
+              }`}
+            >
+              <tab.icon size={18} />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* HOME TAB */}
+        {activeTab === 'home' && (
+          <div className="space-y-2">
+            {/* Goal */}
+            <div className="bg-white border border-gray-300 rounded-2xl p-3">
+              <div className="flex justify-between items-start mb-2">
+                <h2 className="text-sm font-bold text-black">Main Goal</h2>
+                {!isEditingGoal && (
+                  <button
+                    onClick={startEditingGoal}
+                    className="text-sm text-gray-600 hover:text-black"
+                  >
+                    {mainGoal ? 'Edit' : 'Set Goal'}
+                  </button>
+                )}
+              </div>
+              {isEditingGoal ? (
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={tempGoal}
+                    onChange={(e) => setTempGoal(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-white border-2 border-gray-400 rounded-xl text-black focus:border-black focus:ring-2 focus:ring-black outline-none"
+                    placeholder="What's your main fitness goal?"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={saveGoal}
+                      className="flex-1 bg-black text-white py-2 rounded-xl text-sm font-medium"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={cancelEditingGoal}
+                      className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-xl text-sm font-medium"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-600">
+                  {mainGoal || 'Set your main fitness goal to stay motivated'}
+                </p>
+              )}
+            </div>
+
+            {/* Progress Overview */}
+            <div className="bg-white border border-gray-300 rounded-2xl p-3">
+              <h2 className="text-sm font-bold mb-2 text-black">This Week</h2>
+              <div className="space-y-2">
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-gray-600">Workouts</span>
+                    <span className="text-black font-medium">{completedWorkouts}/{totalWorkouts}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-black h-2 rounded-full" style={{ width: `${workoutProgress}%` }}></div>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-gray-600">Meal Plan Adherence</span>
+                    <span className="text-black font-medium">{mealProgress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-black h-2 rounded-full" style={{ width: `${mealProgress}%` }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Vision Board */}
+            <div className="bg-white border border-gray-300 rounded-2xl p-3">
+              <div className="flex justify-between items-center mb-2">
+                <h2 className="text-sm font-bold text-black">Vision Board</h2>
+                {visionPhotos.length < 6 && (
+                  <label className="cursor-pointer text-sm text-gray-600 hover:text-black">
+                    Add Photo
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={addVisionPhoto}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+              {visionPhotos.length === 0 ? (
+                <p className="text-sm text-gray-500">Add photos of your fitness inspiration</p>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {visionPhotos.map(photo => (
+                    <div key={photo.id} className="relative aspect-square rounded-xl overflow-hidden bg-gray-100">
+                      <img src={photo.url} alt="" className="w-full h-full object-cover" />
+                      <button
+                        onClick={() => removeVisionPhoto(photo.id)}
+                        className="absolute top-1 right-1 bg-black text-white rounded-full p-1"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* FITNESS TAB */}
+        {activeTab === 'fitness' && (
+          <div className="space-y-2">
+            {/* Coach: Manage Weekly Workouts */}
+            {role === 'coach' && (
+              <div className="bg-white border border-gray-300 rounded-2xl p-3">
+                <div className="flex justify-between items-center mb-2">
+                  <h2 className="text-sm font-bold text-black">Manage Weekly Workouts</h2>
+                  <button
+                    onClick={() => setShowWorkoutManager(!showWorkoutManager)}
+                    className="px-3 py-1.5 bg-black text-white rounded-xl text-sm font-medium"
+                  >
+                    {showWorkoutManager ? 'Close' : 'Add Workout'}
+                  </button>
+                </div>
+
+                {showWorkoutManager && (
+                  <div className="space-y-2 mb-2 p-4 bg-gray-50 rounded-xl">
+                    <input
+                      type="text"
+                      value={newWorkoutNameCoach}
+                      onChange={(e) => setNewWorkoutNameCoach(e.target.value)}
+                      placeholder="Workout name (e.g. Upper Body Day)"
+                      className="w-full px-3 py-1.5 bg-white border-2 border-gray-400 rounded-xl text-black focus:border-black outline-none"
+                    />
+
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-black">Add Exercises:</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={newExerciseName}
+                          onChange={(e) => setNewExerciseName(e.target.value)}
+                          placeholder="Exercise name"
+                          className="px-3 py-2 bg-white border-2 border-gray-400 rounded-xl text-black text-sm focus:border-black outline-none"
+                          list="exercises"
+                        />
+                        <datalist id="exercises">
+                          {exerciseDatabase.map(ex => <option key={ex} value={ex} />)}
+                        </datalist>
+                        <select
+                          value={newExerciseCategory}
+                          onChange={(e) => setNewExerciseCategory(e.target.value)}
+                          className="px-3 py-2 bg-white border-2 border-gray-400 rounded-xl text-black text-sm focus:border-black outline-none"
+                        >
+                          <option>Strength</option>
+                          <option>Cardio</option>
+                          <option>Flexibility</option>
+                          <option>Sports</option>
+                        </select>
+                        <input
+                          type="number"
+                          value={newExerciseSets}
+                          onChange={(e) => setNewExerciseSets(e.target.value)}
+                          placeholder="Sets"
+                          className="px-3 py-2 bg-white border-2 border-gray-400 rounded-xl text-black text-sm focus:border-black outline-none"
+                        />
+                        <input
+                          type="number"
+                          value={newExerciseReps}
+                          onChange={(e) => setNewExerciseReps(e.target.value)}
+                          placeholder="Reps"
+                          className="px-3 py-2 bg-white border-2 border-gray-400 rounded-xl text-black text-sm focus:border-black outline-none"
+                        />
+                        <input
+                          type="number"
+                          value={newExerciseWeight}
+                          onChange={(e) => setNewExerciseWeight(e.target.value)}
+                          placeholder="Weight (kg)"
+                          className="px-3 py-2 bg-white border-2 border-gray-400 rounded-xl text-black text-sm focus:border-black outline-none"
+                        />
+                        <button
+                          onClick={addExerciseToNewWorkout}
+                          className="px-3 py-2 bg-black text-white rounded-xl text-sm font-medium"
+                        >
+                          Add Exercise
+                        </button>
+                      </div>
+                    </div>
+
+                    {newWorkoutExercises.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-black">Preview:</p>
+                        {newWorkoutExercises.map((ex, idx) => (
+                          <div key={idx} className="flex justify-between items-center bg-white p-2 rounded">
+                            <span className="text-sm text-black">
+                              {ex.name} - {ex.sets}x{ex.reps} {ex.weight > 0 && `@ ${ex.weight}kg`}
+                            </span>
+                            <button
+                              onClick={() => removeExerciseFromNewWorkout(idx)}
+                              className="text-red-600 text-sm"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <button
+                      onClick={addNewWorkout}
+                      disabled={!newWorkoutNameCoach || newWorkoutExercises.length === 0}
+                      className="w-full py-2 bg-black text-white rounded-xl text-sm font-medium disabled:opacity-50"
+                    >
+                      Save Workout to Plan
+                    </button>
+                  </div>
+                )}
+
+                {/* Current workouts with delete */}
+                <div className="space-y-2">
+                  {weeklyWorkouts.map(workout => (
+                    <div key={workout.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-xl">
+                      <span className="text-black font-medium">{workout.name}</span>
+                      <button
+                        onClick={() => removeWorkout(workout.id)}
+                        className="text-red-600 text-sm"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Weekly Progress */}
+            <div className="bg-white border border-gray-300 rounded-2xl p-3">
+              <h2 className="text-sm font-bold mb-2 text-black">Weekly Progress</h2>
+              <div className="mb-2">
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-gray-600">Completed</span>
+                  <span className="text-black font-medium">{completedWorkouts}/{totalWorkouts} workouts</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="bg-black h-2 rounded-full" style={{ width: `${workoutProgress}%` }}></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Assigned Workouts */}
+            <div className="bg-white border border-gray-300 rounded-2xl p-3">
+              <h2 className="text-sm font-bold mb-2 text-black">Weekly Workouts</h2>
+              {weeklyWorkouts.length === 0 ? (
+                <p className="text-sm text-gray-500">No workouts assigned yet</p>
+              ) : (
+                <div className="space-y-2">
+                  {weeklyWorkouts.map(workout => (
+                    <div key={workout.id} className="bg-gray-50 rounded-xl p-3">
+                      <button
+                        onClick={() => toggleWorkout(workout.id)}
+                        className="w-full flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-3">
+                          {workout.completed ? (
+                            <CheckCircle size={20} className="text-green-600" />
+                          ) : (
+                            <Circle size={20} className="text-gray-400" />
+                          )}
+                          <span className={`font-medium ${workout.completed ? 'text-gray-500 line-through' : 'text-black'}`}>
+                            {workout.name}
+                          </span>
+                        </div>
+                        <ChevronDown size={16} className="text-gray-400" />
+                      </button>
+                      {workout.exercises && workout.exercises.length > 0 && (
+                        <div className="mt-3 space-y-2 bg-gray-50 p-3 rounded-lg">
+                          {workout.exercises.map((ex, idx) => (
+                            <div key={idx} className="text-sm text-gray-600">
+                              • {ex.name} - {ex.sets}x{ex.reps} {ex.weight > 0 && `@ ${ex.weight}kg`}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Extra Workouts */}
+            <div className="bg-white border border-gray-300 rounded-2xl p-3">
+              <div className="flex justify-between items-center mb-2">
+                <h2 className="text-sm font-bold text-black">Extra Workouts</h2>
+                <button
+                  onClick={() => setShowWorkoutForm(!showWorkoutForm)}
+                  className="px-3 py-1.5 bg-black text-white rounded-xl text-sm font-medium"
+                >
+                  {showWorkoutForm ? 'Cancel' : 'Add Workout'}
+                </button>
+              </div>
+
+              {showWorkoutForm && (
+                <div className="mb-2 space-y-2">
+                  <input
+                    type="text"
+                    value={newWorkoutName}
+                    onChange={(e) => setNewWorkoutName(e.target.value)}
+                    placeholder="Workout name"
+                    className="w-full px-3 py-1.5 bg-white border-2 border-gray-400 rounded-xl text-black focus:border-black outline-none"
+                  />
+                  <button
+                    onClick={addExtraWorkout}
+                    className="w-full bg-black text-white py-2 rounded-xl text-sm font-medium"
+                  >
+                    Add
+                  </button>
+                </div>
+              )}
+
+              {extraWorkouts.length === 0 ? (
+                <p className="text-sm text-gray-500">No extra workouts added</p>
+              ) : (
+                <div className="space-y-2">
+                  {extraWorkouts.map(workout => (
+                    <div key={workout.id} className="bg-gray-50 rounded-xl p-3 flex items-center justify-between">
+                      <button
+                        onClick={() => toggleWorkout(workout.id, true)}
+                        className="flex items-center gap-3 flex-1"
+                      >
+                        {workout.completed ? (
+                          <CheckCircle size={20} className="text-green-600" />
+                        ) : (
+                          <Circle size={20} className="text-gray-400" />
+                        )}
+                        <span className={`font-medium ${workout.completed ? 'text-gray-500 line-through' : 'text-black'}`}>
+                          {workout.name}
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => removeExtraWorkout(workout.id)}
+                        className="text-red-600 ml-2"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* NUTRITION TAB - Part 1 */}
+        {activeTab === 'nutrition' && (
+          <div className="space-y-2">
+            {/* Coach: Manage Meal Plan */}
+            {role === 'coach' && (
+              <div className="bg-white border border-gray-300 rounded-2xl p-3">
+                <div className="flex justify-between items-center mb-2">
+                  <h2 className="text-sm font-bold text-black">Manage Meal Plan Options</h2>
+                  <button
+                    onClick={() => setShowMealPlanManager(!showMealPlanManager)}
+                    className="px-3 py-1.5 bg-black text-white rounded-xl text-sm font-medium"
+                  >
+                    {showMealPlanManager ? 'Close' : 'Add Meal'}
+                  </button>
+                </div>
+
+                {showMealPlanManager && (
+                  <div className="space-y-2 mb-2 p-4 bg-gray-50 rounded-xl">
+                    <select
+                      value={newMealCategory}
+                      onChange={(e) => setNewMealCategory(e.target.value)}
+                      className="w-full px-3 py-1.5 bg-white border-2 border-gray-400 rounded-xl text-black focus:border-black outline-none"
+                    >
+                      <option value="breakfast">Breakfast</option>
+                      <option value="lunch">Lunch</option>
+                      <option value="dinner">Dinner</option>
+                      <option value="snacks">Snacks</option>
+                    </select>
+                    <input
+                      type="text"
+                      value={newMealName}
+                      onChange={(e) => setNewMealName(e.target.value)}
+                      placeholder="Meal name"
+                      className="w-full px-3 py-1.5 bg-white border-2 border-gray-400 rounded-xl text-black focus:border-black outline-none"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="number"
+                        value={newMealCalories}
+                        onChange={(e) => setNewMealCalories(e.target.value)}
+                        placeholder="Calories"
+                        className="px-3 py-2 bg-white border-2 border-gray-400 rounded-xl text-black focus:border-black outline-none"
+                      />
+                      <input
+                        type="number"
+                        value={newMealProtein}
+                        onChange={(e) => setNewMealProtein(e.target.value)}
+                        placeholder="Protein (g)"
+                        className="px-3 py-2 bg-white border-2 border-gray-400 rounded-xl text-black focus:border-black outline-none"
+                      />
+                      <input
+                        type="number"
+                        value={newMealCarbs}
+                        onChange={(e) => setNewMealCarbs(e.target.value)}
+                        placeholder="Carbs (g)"
+                        className="px-3 py-2 bg-white border-2 border-gray-400 rounded-xl text-black focus:border-black outline-none"
+                      />
+                      <input
+                        type="number"
+                        value={newMealFats}
+                        onChange={(e) => setNewMealFats(e.target.value)}
+                        placeholder="Fats (g)"
+                        className="px-3 py-2 bg-white border-2 border-gray-400 rounded-xl text-black focus:border-black outline-none"
+                      />
+                    </div>
+                    <button
+                      onClick={addMealOption}
+                      className="w-full py-2 bg-black text-white rounded-xl text-sm font-medium"
+                    >
+                      Add Meal Option
+                    </button>
+                  </div>
+                )}
+
+                {/* Show current meal options by category */}
+                <div className="space-y-2">
+                  {['breakfast', 'lunch', 'dinner', 'snacks'].map(category => (
+                    <div key={category} className="bg-gray-50 rounded-xl p-3">
+                      <h3 className="font-bold text-sm text-black capitalize mb-2">{category}</h3>
+                      {mealPlan[category].length === 0 ? (
+                        <p className="text-xs text-gray-500">No options yet</p>
+                      ) : (
+                        <div className="space-y-1">
+                          {mealPlan[category].map(meal => (
+                            <div key={meal.id} className="flex justify-between items-center bg-white p-2 rounded text-xs">
+                              <span className="text-black">
+                                {meal.name} ({meal.calories} cal)
+                              </span>
+                              <button
+                                onClick={() => removeMealOption(category, meal.id)}
+                                className="text-red-600"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Nutrition Summary */}
+            <div className="bg-white border border-gray-300 rounded-2xl p-3">
+              <h2 className="text-sm font-bold mb-2 text-black">Today's Nutrition</h2>
+              <div className="flex gap-3 text-xs">
+                <div>
+                  <span className="text-gray-600">Cal: </span>
+                  <span className="text-black font-medium">{nutrition.calories}/{dailyCalorieGoal}</span>
+                </div>
+                <div className="border-l border-gray-300 pl-3">
+                  <span className="text-gray-600">P: </span>
+                  <span className="text-black font-medium">{nutrition.protein}/{proteinGoal}g</span>
+                </div>
+                <div className="border-l border-gray-300 pl-3">
+                  <span className="text-gray-600">C: </span>
+                  <span className="text-black font-medium">{nutrition.carbs}/{carbsGoal}g</span>
+                </div>
+                <div className="border-l border-gray-300 pl-3">
+                  <span className="text-gray-600">F: </span>
+                  <span className="text-black font-medium">{nutrition.fats}/{fatsGoal}g</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Meal Plan Selection */}
+            <div className="bg-white border border-gray-300 rounded-2xl p-3">
+              <h2 className="text-sm font-bold mb-1 text-black">Meal Plan</h2>
+              <p className="text-xs text-gray-500 mb-2">Select what you ate</p>
+              
+              <div className="space-y-2">
+                {/* Breakfast */}
+                <div className="bg-gray-50 rounded-xl p-2">
+                  <h3 className="font-bold mb-2 text-sm text-black">Breakfast</h3>
+                  <div className="relative">
+                    <select
+                      value={getMealSelection('breakfast') || ''}
+                      onChange={(e) => selectMeal('breakfast', e.target.value)}
+                      className="w-full px-3 py-1.5 bg-white border-2 border-gray-400 rounded-xl text-black font-medium cursor-pointer hover:border-black transition-all focus:border-black focus:ring-2 focus:ring-black outline-none appearance-none"
+                      style={{
+                        backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%23000\' d=\'M10.293 3.293L6 7.586 1.707 3.293A1 1 0 00.293 4.707l5 5a1 1 0 001.414 0l5-5a1 1 0 10-1.414-1.414z\'/%3E%3C/svg%3E")',
+                        backgroundRepeat: 'no-repeat',
+                        backgroundPosition: 'right 1rem center',
+                        paddingRight: '3rem'
+                      }}
+                    >
+                      <option value="">Select what you ate...</option>
+                      {mealPlan.breakfast.map(meal => (
+                        <option key={meal.id} value={meal.id}>
+                          {meal.name} ({meal.calories} cal)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {getMealSelection('breakfast') && (
+                    <div className="bg-green-50 p-2 rounded text-xs mt-2">
+                      {(() => {
+                        const selected = mealPlan.breakfast.find(m => m.id === getMealSelection('breakfast'));
+                        return selected ? (
+                          <p className="text-green-700">
+                            ✓ {selected.name} - {selected.calories} cal | P:{selected.protein}g C:{selected.carbs}g F:{selected.fats}g
+                          </p>
+                        ) : null;
+                      })()}
+                    </div>
+                  )}
+                </div>
+
+                {/* Lunch */}
+                <div className="bg-gray-50 rounded-xl p-2">
+                  <h3 className="font-bold mb-2 text-sm text-black">Lunch</h3>
+                  <select
+                    value={getMealSelection('lunch') || ''}
+                    onChange={(e) => selectMeal('lunch', e.target.value)}
+                    className="w-full px-3 py-1.5 bg-white border-2 border-gray-400 rounded-xl text-black font-medium cursor-pointer hover:border-black transition-all focus:border-black focus:ring-2 focus:ring-black outline-none pr-10"
+                    style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 0.75rem center", backgroundSize: "1.25rem" }}
+                  >
+                    <option value="">Select what you ate...</option>
+                    {mealPlan.lunch.map(meal => (
+                      <option key={meal.id} value={meal.id}>
+                        {meal.name} ({meal.calories} cal)
+                      </option>
+                    ))}
+                  </select>
+                  {getMealSelection('lunch') && (
+                    <div className="bg-green-50 p-2 rounded text-xs mt-2">
+                      {(() => {
+                        const selected = mealPlan.lunch.find(m => m.id === getMealSelection('lunch'));
+                        return selected ? (
+                          <p className="text-green-700">
+                            ✓ {selected.name} - {selected.calories} cal | P:{selected.protein}g C:{selected.carbs}g F:{selected.fats}g
+                          </p>
+                        ) : null;
+                      })()}
+                    </div>
+                  )}
+                </div>
+
+                {/* Dinner */}
+                <div className="bg-gray-50 rounded-xl p-2">
+                  <h3 className="font-bold mb-2 text-sm text-black">Dinner</h3>
+                  <select
+                    value={getMealSelection('dinner') || ''}
+                    onChange={(e) => selectMeal('dinner', e.target.value)}
+                    className="w-full px-3 py-1.5 bg-white border-2 border-gray-400 rounded-xl text-black font-medium cursor-pointer hover:border-black transition-all focus:border-black focus:ring-2 focus:ring-black outline-none pr-10"
+                    style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 0.75rem center", backgroundSize: "1.25rem" }}
+                  >
+                    <option value="">Select what you ate...</option>
+                    {mealPlan.dinner.map(meal => (
+                      <option key={meal.id} value={meal.id}>
+                        {meal.name} ({meal.calories} cal)
+                      </option>
+                    ))}
+                  </select>
+                  {getMealSelection('dinner') && (
+                    <div className="bg-green-50 p-2 rounded text-xs mt-2">
+                      {(() => {
+                        const selected = mealPlan.dinner.find(m => m.id === getMealSelection('dinner'));
+                        return selected ? (
+                          <p className="text-green-700">
+                            ✓ {selected.name} - {selected.calories} cal | P:{selected.protein}g C:{selected.carbs}g F:{selected.fats}g
+                          </p>
+                        ) : null;
+                      })()}
+                    </div>
+                  )}
+                </div>
+
+                {/* Snacks */}
+                <div className="bg-gray-50 rounded-xl p-2">
+                  <h3 className="font-bold mb-2 text-sm text-black">Snacks</h3>
+                  <select
+                    value={getMealSelection('snacks') || ''}
+                    onChange={(e) => selectMeal('snacks', e.target.value)}
+                    className="w-full px-3 py-1.5 bg-white border-2 border-gray-400 rounded-xl text-black font-medium cursor-pointer hover:border-black transition-all focus:border-black focus:ring-2 focus:ring-black outline-none pr-10"
+                    style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 0.75rem center", backgroundSize: "1.25rem" }}
+                  >
+                    <option value="">Select what you ate...</option>
+                    {mealPlan.snacks.map(meal => (
+                      <option key={meal.id} value={meal.id}>
+                        {meal.name} ({meal.calories} cal)
+                      </option>
+                    ))}
+                  </select>
+                  {getMealSelection('snacks') && (
+                    <div className="bg-green-50 p-2 rounded text-xs mt-2">
+                      {(() => {
+                        const selected = mealPlan.snacks.find(m => m.id === getMealSelection('snacks'));
+                        return selected ? (
+                          <p className="text-green-700">
+                            ✓ {selected.name} - {selected.calories} cal | P:{selected.protein}g C:{selected.carbs}g F:{selected.fats}g
+                          </p>
+                        ) : null;
+                      })()}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Extra Meals */}
+            <div className="bg-white border border-gray-300 rounded-2xl p-3">
+              <div className="flex justify-between items-center mb-2">
+                <h2 className="text-sm font-bold text-black">Extra Meals</h2>
+                <button
+                  onClick={() => setShowFoodSearch(!showFoodSearch)}
+                  className="px-3 py-1.5 bg-black text-white rounded-xl text-sm font-medium"
+                >
+                  {showFoodSearch ? 'Cancel' : 'Add Food'}
+                </button>
+              </div>
+
+              {showFoodSearch && (
+                <div className="mb-2 space-y-2 p-4 bg-gray-50 rounded-xl">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && searchFood()}
+                      placeholder="Search for food..."
+                      className="flex-1 px-3 py-1.5 bg-white border-2 border-gray-400 rounded-xl text-black focus:border-black outline-none"
+                    />
+                    <button
+                      onClick={searchFood}
+                      disabled={isSearching}
+                      className="px-3 py-1.5 bg-black text-white rounded-xl text-sm font-medium"
+                    >
+                      {isSearching ? 'Searching...' : 'Search'}
+                    </button>
+                  </div>
+
+                  {searchResults.length > 0 && (
+                    <div className="space-y-2">
+                      {searchResults.map((food, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setSelectedFood(food)}
+                          className={`w-full text-left p-3 rounded-xl border-2 transition-all ${
+                            selectedFood && selectedFood.name === food.name
+                              ? 'border-black bg-white'
+                              : 'border-gray-300 bg-white hover:border-gray-400'
+                          }`}
+                        >
+                          <p className="font-medium text-black text-sm">{food.name}</p>
+                          <p className="text-xs text-gray-600">
+                            {Math.round(food.calories)} cal | P:{Math.round(food.protein)}g C:{Math.round(food.carbs)}g F:{Math.round(food.fats)}g
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {selectedFood && (
+                    <div className="space-y-2">
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={servingSize}
+                        onChange={(e) => setServingSize(parseFloat(e.target.value))}
+                        placeholder="Serving size (multiplier)"
+                        className="w-full px-3 py-1.5 bg-white border-2 border-gray-400 rounded-xl text-black focus:border-black outline-none"
+                      />
+                      <button
+                        onClick={addExtraMeal}
+                        className="w-full bg-black text-white py-2 rounded-xl text-sm font-medium"
+                      >
+                        Add to Today
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {extraMeals.length === 0 ? (
+                <p className="text-sm text-gray-500">No extra meals added</p>
+              ) : (
+                <div className="space-y-2">
+                  {extraMeals.map(meal => (
+                    <div key={meal.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-xl">
+                      <div>
+                        <p className="font-medium text-black text-sm">{meal.name}</p>
+                        <p className="text-xs text-gray-600">
+                          {meal.calories} cal | P:{meal.protein}g C:{meal.carbs}g F:{meal.fats}g
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => removeExtraMeal(meal.id)}
+                        className="text-red-600"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* CHECK-IN TAB */}
+        {activeTab === 'checkin' && (
+          <div className="space-y-2">
+            <div className="bg-white border border-gray-300 rounded-2xl p-3">
+              <div className="flex justify-between items-center mb-2">
+                <h2 className="text-sm font-bold text-black">Weekly Check-In</h2>
+                <button
+                  onClick={() => setShowCheckInForm(!showCheckInForm)}
+                  className="px-3 py-1.5 bg-black text-white rounded-xl text-sm font-medium"
+                >
+                  {showCheckInForm ? 'Cancel' : 'Check In Today'}
+                </button>
+              </div>
+
+              {showCheckInForm && (
+                <CheckInForm onSubmit={addCheckIn} onCancel={() => setShowCheckInForm(false)} />
+              )}
+
+              <div className="mt-4">
+                {getCurrentWeekCheckIns().length === 0 ? (
+                  <p className="text-gray-500 text-sm">No check-ins yet</p>
+                ) : (
+                  <div className="space-y-2">
+                    {getCurrentWeekCheckIns().map(c => (
+                      <div key={c.id} className="p-3 bg-white border border-gray-300 rounded">
+                        <div className="flex justify-between mb-1">
+                          <span className="font-semibold text-sm text-black">{c.date}</span>
+                          {c.weight && <span className="text-sm text-gray-600">{c.weight}kg</span>}
+                        </div>
+                        <p className="text-xs text-gray-600">
+                          Energy: {c.wellness.energy}/10 | Sleep: {c.wellness.sleep}h (Quality: {c.wellness.sleepQuality}/10) | Stress: {c.wellness.stress}/10
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          Steps: {c.wellness.steps} | Water: {c.wellness.water}L
+                        </p>
+                        {c.notes && <p className="text-xs text-gray-500 mt-1 italic">{c.notes}</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Check-In Form Component
+const CheckInForm = ({ onSubmit, onCancel }) => {
+  const [weight, setWeight] = useState('');
+  const [energy, setEnergy] = useState(5);
+  const [sleep, setSleep] = useState(7);
+  const [sleepQuality, setSleepQuality] = useState(5);
+  const [stress, setStress] = useState(5);
+  const [steps, setSteps] = useState('');
+  const [water, setWater] = useState('');
+  const [notes, setNotes] = useState('');
+
+  const handleSubmit = () => {
+    onSubmit({
+      weight: weight ? parseFloat(weight) : null,
+      wellness: {
+        energy: parseInt(energy),
+        sleep: parseInt(sleep),
+        sleepQuality: parseInt(sleepQuality),
+        stress: parseInt(stress),
+        steps: parseInt(steps) || 0,
+        water: parseFloat(water) || 0
+      },
+      notes
+    });
+  };
+
+  return (
+    <div className="space-y-2 p-4 bg-gray-50 rounded-xl">
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs text-gray-600 mb-1">Weight (kg)</label>
+          <input
+            type="number"
+            step="0.1"
+            value={weight}
+            onChange={(e) => setWeight(e.target.value)}
+            className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-xl text-black focus:border-black outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-600 mb-1">Energy (1-10)</label>
+          <input
+            type="number"
+            min="1"
+            max="10"
+            value={energy}
+            onChange={(e) => setEnergy(e.target.value)}
+            className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-xl text-black focus:border-black outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-600 mb-1">Sleep (hours)</label>
+          <input
+            type="number"
+            step="0.5"
+            value={sleep}
+            onChange={(e) => setSleep(e.target.value)}
+            className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-xl text-black focus:border-black outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-600 mb-1">Sleep Quality (1-10)</label>
+          <input
+            type="number"
+            min="1"
+            max="10"
+            value={sleepQuality}
+            onChange={(e) => setSleepQuality(e.target.value)}
+            className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-xl text-black focus:border-black outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-600 mb-1">Stress (1-10)</label>
+          <input
+            type="number"
+            min="1"
+            max="10"
+            value={stress}
+            onChange={(e) => setStress(e.target.value)}
+            className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-xl text-black focus:border-black outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-600 mb-1">Steps</label>
+          <input
+            type="number"
+            value={steps}
+            onChange={(e) => setSteps(e.target.value)}
+            className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-xl text-black focus:border-black outline-none"
+          />
+        </div>
+        <div className="col-span-2">
+          <label className="block text-xs text-gray-600 mb-1">Water (L)</label>
+          <input
+            type="number"
+            step="0.1"
+            value={water}
+            onChange={(e) => setWater(e.target.value)}
+            className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-xl text-black focus:border-black outline-none"
+          />
+        </div>
+      </div>
+      <div>
+        <label className="block text-xs text-gray-600 mb-1">Notes (optional)</label>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-xl text-black focus:border-black outline-none"
+          rows="3"
+          placeholder="How are you feeling today?"
+        />
+      </div>
+      <div className="flex gap-2">
+        <button
+          onClick={handleSubmit}
+          className="flex-1 bg-black text-white py-2 rounded-xl text-sm font-medium"
+        >
+          Submit Check-In
+        </button>
+        <button
+          onClick={onCancel}
+          className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-xl text-sm font-medium"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default FitnessApp;
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<FitnessApp />);
+  </script>
+</body>
+</html>
